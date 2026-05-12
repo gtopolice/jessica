@@ -4,6 +4,7 @@ import { usePrivy } from "@privy-io/react-auth";
 import { useCallback, useEffect, useState } from "react";
 import { RealtimeConnectionLabel } from "@/components/realtime-connection-label";
 import { Sprint2Demo } from "@/components/sprint2-demo";
+import { getEthereumAddressFromLinkedAccounts } from "@/lib/privy/linked-ethereum-address";
 
 type SyncState = "idle" | "syncing" | "ok" | "error";
 
@@ -43,6 +44,8 @@ function HomeWithPrivy() {
   const [syncState, setSyncState] = useState<SyncState>("idle");
   const [syncDetail, setSyncDetail] = useState<string>("");
 
+  const walletPreview = user ? getEthereumAddressFromLinkedAccounts(user.linkedAccounts) : null;
+
   const syncProfile = useCallback(async () => {
     setSyncState("syncing");
     setSyncDetail("");
@@ -53,45 +56,39 @@ function HomeWithPrivy() {
       return;
     }
 
-    const attempt = async () => {
-      const res = await fetch("/api/profile/sync", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const body = (await res.json().catch(() => ({}))) as {
-        error?: string;
-        profile?: { wallet_address: string; reputation_score: number };
-      };
-      return { res, body };
+    const res = await fetch("/api/profile/sync", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const body = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      profile?: { wallet_address: string; reputation_score: number };
     };
 
-    for (let i = 0; i < 5; i++) {
-      const { res, body } = await attempt();
-      if (res.ok && body.profile) {
-        setSyncState("ok");
-        setSyncDetail(body.profile.wallet_address);
-        return;
-      }
-      if (res.status === 400 && body.error?.includes("No Ethereum wallet")) {
-        await new Promise((r) => setTimeout(r, 1200));
-        continue;
-      }
-      setSyncState("error");
-      setSyncDetail(body.error ?? res.statusText);
+    if (res.ok && body.profile) {
+      setSyncState("ok");
+      setSyncDetail(body.profile.wallet_address);
       return;
     }
 
     setSyncState("error");
-    setSyncDetail("Wallet not ready yet; try again.");
+    setSyncDetail(body.error ?? res.statusText);
   }, [getAccessToken]);
 
   useEffect(() => {
-    if (!ready || !authenticated) return;
+    if (!ready || !authenticated || !user) return;
+    if (!walletPreview) {
+      const resetId = window.setTimeout(() => {
+        setSyncState("idle");
+        setSyncDetail("");
+      }, 0);
+      return () => window.clearTimeout(resetId);
+    }
     const handle = window.setTimeout(() => {
       void syncProfile();
     }, 0);
     return () => window.clearTimeout(handle);
-  }, [ready, authenticated, syncProfile]);
+  }, [ready, authenticated, user, walletPreview, syncProfile]);
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-lg flex-col gap-8 px-6 py-16">
@@ -127,6 +124,11 @@ function HomeWithPrivy() {
             <p className="font-mono text-sm break-all text-zinc-800 dark:text-zinc-200">
               {user?.id ?? "—"}
             </p>
+            {walletPreview ? null : (
+              <p className="text-sm text-amber-700 dark:text-amber-400">
+                Creating embedded wallet… Supabase sync runs automatically when it appears.
+              </p>
+            )}
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
