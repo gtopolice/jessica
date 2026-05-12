@@ -1,0 +1,45 @@
+# J.E.S.S.I.C.A. — Code hygiene & architecture
+
+## 1. Source of truth
+- **Product and schema:** `docs/PRD.md` (not `@prd.md`). When behavior conflicts with this file, follow the PRD and then update these rules.
+- **Implementation truth:** match patterns already in this repo (imports, file layout, `function` vs arrow). Extend; do not fight existing style without a repo-wide refactor.
+
+## 2. Project context (see `docs/PRD.md` §3 for detail)
+- **App:** Next.js App Router, TypeScript, React 19, Tailwind CSS v4, ESLint (see `package.json` / `eslint.config.mjs`).
+- **Hosting:** Railway (`npm run build` / `npm run start`).
+- **Data:** Supabase (PostgreSQL + Realtime); server mutations via **service role** only in Route Handlers / server code, never in client bundles.
+- **Auth / wallets:** Privy + viem (chains); Coinbase CDP for paymaster / AA as configured in dashboards (see `README.md`).
+- **Media / video:** Daily.co (human WebRTC); Livepeer ingress (ONVIF RTSP → WebRTC) per PRD.
+- **Storage:** Cloudflare R2 (S3-compatible) for Reels/teasers when implemented.
+- **Chain / payments:** Base (Sepolia / mainnet); Superfluid (USDCx); x402 on agent routes when implemented.
+
+## 3. Architecture
+- **Modularity:** Small, focused modules; one main responsibility per file.
+- **Server vs client:** Prefer Server Components and Route Handlers. Use `'use client'` only for interactivity, browser APIs, or Privy/React hooks.
+- **Typing:** Avoid `any`. Prefer types inferred from Supabase generated types when you add codegen; until then, explicit interfaces for domain models (`Profile`, `Stream`, `Bounty`, etc.).
+- **Naming:** Clear intent (e.g. `isSuperfluidFlowActive`, `createSupabaseAdminClient`).
+
+## 4. Code style (align with existing files)
+- **Components:** Use `export function ComponentName()` or `export default function Page()` as already used under `app/` and `components/`. Do not require arrow-only components.
+- **Where to put new code (incremental):**
+  - `app/` — routes, layouts, Route Handlers (`app/api/...`).
+  - `components/` — React components; add `components/ui/` and `components/features/...` when those areas grow.
+  - `lib/` — clients and pure helpers (e.g. `lib/supabase/*`, `lib/privy/*`).
+  - `hooks/` — custom hooks when shared logic outgrows components.
+  - `types/` — shared domain types when they are reused across modules.
+
+## 5. Web3 & security
+- **Secrets:** Never commit real keys. Use env vars; document names in `.env.example` only.
+- **Errors:** Handle failures from RPC, Privy, Supabase, and external HTTP (try/catch or Result-style at boundaries).
+- **Loading / async UX:** User-visible async flows should expose pending/error state where it matters (avoid silent failures).
+- **Privacy (when streaming exists):** Blur sensitive regions locally (e.g. TensorFlow.js) before sending frames, per PRD.
+
+## 6. API & data
+- **Supabase Realtime:** Unsubscribe / `removeChannel` in `useEffect` cleanup (see `components/realtime-connection-label.tsx`).
+- **R2 (future):** Prefer AWS SDK v3; naming can follow `reel_{streamId}_{timestamp}.<ext>` (adjust when product names files).
+- **x402 (future):** Agent-facing routes return `402` with machine-readable payment requirements when no valid Superfluid flow / session payment.
+
+## 7. Cursor workflow
+- For large additions, sketch folder placement first if non-obvious.
+- For complex tasks, outline steps before coding.
+- Re-read `docs/PRD.md` when changing product behavior, schema, or payment/video flows.
