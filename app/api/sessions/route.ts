@@ -94,6 +94,7 @@ export async function POST(request: Request) {
 
   const tx = encodeCfaCreateFlow({
     superToken: SUPERFLUID_BASE_SEPOLIA.fusdcx,
+    sender: requesterWallet,
     receiver: fulfillerWallet,
     flowRatePerSecond: flowRate,
   });

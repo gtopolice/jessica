@@ -63,10 +63,6 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   const receiver = fulfiller.wallet_address.toLowerCase() as `0x${string}`;
-  const deleteTx = encodeCfaDeleteFlow({
-    superToken: SUPERFLUID_BASE_SEPOLIA.fusdcx,
-    receiver,
-  });
 
   const now = new Date().toISOString();
   const { data: updated, error: updateError } = await supabase
@@ -81,11 +77,29 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
+  let deleteFlowTransaction: { to: `0x${string}`; data: `0x${string}` } | null = null;
+  if (isRequester && session.status === "active") {
+    const { data: requester, error: requesterError } = await supabase
+      .from("profiles")
+      .select("wallet_address")
+      .eq("id", session.requester_id)
+      .single();
+
+    if (requesterError || !requester?.wallet_address) {
+      return NextResponse.json({ error: "Requester wallet missing" }, { status: 500 });
+    }
+
+    const sender = requester.wallet_address.toLowerCase() as `0x${string}`;
+    const deleteTx = encodeCfaDeleteFlow({
+      superToken: SUPERFLUID_BASE_SEPOLIA.fusdcx,
+      sender,
+      receiver,
+    });
+    deleteFlowTransaction = { to: deleteTx.to, data: deleteTx.data };
+  }
+
   return NextResponse.json({
     session: updated,
-    deleteFlowTransaction:
-      isRequester && session.status === "active"
-        ? { to: deleteTx.to, data: deleteTx.data }
-        : null,
+    deleteFlowTransaction,
   });
 }
