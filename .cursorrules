@@ -15,6 +15,7 @@
 
 ## 3. Architecture
 - **Modularity:** Small, focused modules; one main responsibility per file.
+- **File size:** No single **hand-written** source file should exceed **300 lines** (count includes comments and blanks). Split before the limit—extract helpers, hooks, route partials, or subcomponents. **Excluded:** generated artifacts (e.g. `package-lock.json`, build output under `.next/`).
 - **Server vs client:** Prefer Server Components and Route Handlers. Use `'use client'` only for interactivity, browser APIs, or Privy/React hooks.
 - **Typing:** Avoid `any`. Prefer types inferred from Supabase generated types when you add codegen; until then, explicit interfaces for domain models (`Profile`, `Stream`, `Bounty`, etc.).
 - **Naming:** Clear intent (e.g. `isSuperfluidFlowActive`, `createSupabaseAdminClient`).
