@@ -108,6 +108,7 @@ export async function POST(request: Request, context: RouteContext) {
 
   return NextResponse.json({
     session: updated,
+    streamId: stream.id,
     dailyRoomUrl: stream.daily_room_url,
     onChainFlowRate: onChainRate.toString(),
   });

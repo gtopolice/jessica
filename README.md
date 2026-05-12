@@ -11,7 +11,7 @@ Next.js app for **J.E.S.S.I.C.A.** (Joint Eyesight Sharing System for Instant Ca
 
 ## Sprint 2 — Daily + Superfluid
 
-- **Daily.co:** `POST /api/streams` creates a private Daily room (server uses `DAILY_API_KEY`) and stores `daily_room_url` on `streams`.
+- **Daily.co:** `POST /api/streams` creates a room (default **`privacy: private`**; optional `DAILY_ROOM_PRIVACY=public` for local tests without tokens). The app mints [meeting tokens](https://docs.daily.co/reference/rest-api/meeting-tokens/create-meeting-token) via **`POST /api/streams/[id]/meeting-token`**: the **fulfiller** (stream creator) and an **active** session **requester** get a short-lived `?t=` URL for the Prebuilt iframe — aligned with controlled access in [docs/PRD.md](docs/PRD.md).
 - **Superfluid (Base Sepolia):** `POST /api/sessions` opens a `sessions` row and returns **CFAv1Forwarder** `createFlow` calldata for the **requester** to stream **fUSDCx** (Superfluid Super Token over faucet **fUSDC**) to the **fulfiller**. `POST /api/sessions/[id]/verify` reads the on-chain flow via the **CFA** contract; if the rate is sufficient it sets the session **active** and returns the Daily URL (HTTP **402** if no flow yet — same spirit as x402 gating).
 - **UI:** After profile sync succeeds, the home page shows a **Sprint 2** panel: two-browser demo (fulfiller creates stream; requester pastes `stream id`, signs `createFlow`, verifies, iframe).
 

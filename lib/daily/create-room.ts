@@ -1,5 +1,10 @@
 /**
- * Creates a private Daily.co room (server-side).
+ * Creates a Daily.co room (server-side).
+ *
+ * **Privacy:** Defaults to **`private`** (link-in-bio strangers cannot join; aligns with controlled access in
+ * [docs/PRD.md](docs/PRD.md) §4–5). Joining from our app uses [meeting tokens](https://docs.daily.co/reference/rest-api/meeting-tokens/create-meeting-token)
+ * via `POST /api/streams/[id]/meeting-token`. Set `DAILY_ROOM_PRIVACY=public` only for quick tests without tokens.
+ *
  * @see https://docs.daily.co/reference/rest-api/rooms/create-room
  */
 export async function createDailyRoom(params: { name: string }): Promise<{
@@ -12,6 +17,9 @@ export async function createDailyRoom(params: { name: string }): Promise<{
     throw new Error("DAILY_API_KEY is not set");
   }
 
+  const privacy =
+    process.env.DAILY_ROOM_PRIVACY === "public" ? "public" : "private";
+
   const res = await fetch("https://api.daily.co/v1/rooms", {
     method: "POST",
     headers: {
@@ -20,7 +28,7 @@ export async function createDailyRoom(params: { name: string }): Promise<{
     },
     body: JSON.stringify({
       name: params.name,
-      privacy: "private",
+      privacy,
       properties: {
         exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
         enable_chat: true,

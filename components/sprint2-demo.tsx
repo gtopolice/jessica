@@ -11,7 +11,7 @@ export function Sprint2Demo() {
   const { sendTransaction } = useSendTransaction();
   const [streamId, setStreamId] = useState("");
   const [sessionId, setSessionId] = useState("");
-  const [roomUrl, setRoomUrl] = useState<string | null>(null);
+  const [embedUrl, setEmbedUrl] = useState<string | null>(null);
   const [log, setLog] = useState<string>("");
   const [busy, setBusy] = useState(false);
 
@@ -25,6 +25,15 @@ export function Sprint2Demo() {
     setLog((prev) => `${prev}\n${line}`.trim());
   };
 
+  const fetchMeetingEmbed = async (sid: string) => {
+    const headers = await authHeaders();
+    const res = await fetch(`/api/streams/${sid}/meeting-token`, { method: "POST", headers });
+    const body = (await res.json()) as { embedUrl?: string; error?: string };
+    if (!res.ok) throw new Error(body.error ?? res.statusText);
+    if (!body.embedUrl) throw new Error("No embedUrl in meeting-token response");
+    return body.embedUrl;
+  };
+
   const createStream = async () => {
     setBusy(true);
     try {
@@ -34,7 +43,8 @@ export function Sprint2Demo() {
       if (!res.ok) throw new Error(body.error ?? res.statusText);
       if (!body.stream) throw new Error("No stream in response");
       setStreamId(body.stream.id);
-      setRoomUrl(body.stream.daily_room_url);
+      const url = await fetchMeetingEmbed(body.stream.id);
+      setEmbedUrl(url);
       appendLog(`Stream ${body.stream.id} created (fulfiller / Daily host uses this tab).`);
     } catch (e) {
       appendLog(e instanceof Error ? e.message : String(e));
@@ -93,12 +103,16 @@ export function Sprint2Demo() {
         headers,
       });
       const body = (await res.json()) as ApiErr & {
+        streamId?: string;
         dailyRoomUrl?: string;
         onChainFlowRate?: string;
       };
       if (!res.ok) throw new Error(body.error ?? res.statusText);
-      setRoomUrl(body.dailyRoomUrl ?? null);
-      appendLog(`Verified. on-chain flowRate=${body.onChainFlowRate}. Daily URL unlocked below.`);
+      const sid = body.streamId ?? streamId.trim();
+      if (!sid) throw new Error("Missing stream id — paste stream id or restart session.");
+      const url = await fetchMeetingEmbed(sid);
+      setEmbedUrl(url);
+      appendLog(`Verified. on-chain flowRate=${body.onChainFlowRate}. Daily embed unlocked below.`);
     } catch (e) {
       appendLog(e instanceof Error ? e.message : String(e));
     } finally {
@@ -130,7 +144,7 @@ export function Sprint2Demo() {
       } else {
         appendLog("Session ended (no deleteFlow tx — was still pending_payment or not requester).");
       }
-      setRoomUrl(null);
+      setEmbedUrl(null);
     } catch (e) {
       appendLog(e instanceof Error ? e.message : String(e));
     } finally {
@@ -201,12 +215,12 @@ export function Sprint2Demo() {
         session: {sessionId || "—"}
       </p>
 
-      {roomUrl ? (
+      {embedUrl ? (
         <div className="mt-4">
           <p className="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">Daily room</p>
           <iframe
             title="Daily"
-            src={roomUrl}
+            src={embedUrl}
             allow="camera; microphone; fullscreen; display-capture; autoplay"
             className="h-72 w-full rounded-xl border border-zinc-200 dark:border-zinc-700"
           />
