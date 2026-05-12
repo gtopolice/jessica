@@ -1,10 +1,13 @@
 "use client";
 
-import { usePrivy } from "@privy-io/react-auth";
+import { usePrivy, useActiveWallet } from "@privy-io/react-auth";
 import { useCallback, useEffect, useState } from "react";
 import { RealtimeConnectionLabel } from "@/components/realtime-connection-label";
 import { Sprint2Demo } from "@/components/sprint2-demo";
+import { WalletBalancesPanel } from "@/components/wallet-balances-panel";
+import { IconCopyButton } from "@/components/icon-copy-button";
 import { getEthereumAddressFromLinkedAccounts } from "@/lib/privy/linked-ethereum-address";
+import { baseSepoliaAddressExplorerUrl, shortenHexAddress } from "@/lib/format/shorten";
 
 type SyncState = "idle" | "syncing" | "ok" | "error";
 
@@ -41,10 +44,13 @@ export function HomeClient() {
 
 function HomeWithPrivy() {
   const { ready, authenticated, login, logout, user, getAccessToken } = usePrivy();
+  const { wallet: activeWallet } = useActiveWallet();
   const [syncState, setSyncState] = useState<SyncState>("idle");
   const [syncDetail, setSyncDetail] = useState<string>("");
 
   const walletPreview = user ? getEthereumAddressFromLinkedAccounts(user.linkedAccounts) : null;
+  const ethActive = activeWallet?.type === "ethereum" ? activeWallet.address : null;
+  const connectedWalletAddress = (ethActive ?? walletPreview)?.trim() || null;
 
   const syncProfile = useCallback(async () => {
     setSyncState("syncing");
@@ -121,7 +127,21 @@ function HomeWithPrivy() {
         ) : (
           <div className="space-y-4">
             <p className="text-sm text-zinc-500">Signed in</p>
-            <p className="font-mono text-sm break-all text-zinc-800 dark:text-zinc-200">
+            {connectedWalletAddress ? (
+              <div className="flex min-w-0 items-center gap-2">
+                <a
+                  href={baseSepoliaAddressExplorerUrl(connectedWalletAddress)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="min-w-0 truncate font-mono text-sm font-medium text-emerald-700 underline decoration-emerald-700/30 underline-offset-2 hover:decoration-emerald-700 dark:text-emerald-400 dark:decoration-emerald-400/30 dark:hover:decoration-emerald-400"
+                  title={connectedWalletAddress}
+                >
+                  {shortenHexAddress(connectedWalletAddress)}
+                </a>
+                <IconCopyButton textToCopy={connectedWalletAddress} label="Copy wallet address" />
+              </div>
+            ) : null}
+            <p className="font-mono text-xs text-zinc-500 break-all" title="Privy user id">
               {user?.id ?? "—"}
             </p>
             {walletPreview ? null : (
@@ -145,6 +165,7 @@ function HomeWithPrivy() {
                 Log out
               </button>
             </div>
+            {walletPreview ? <WalletBalancesPanel addressFallback={walletPreview} /> : null}
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
               Supabase:{" "}
               <span className="font-medium">

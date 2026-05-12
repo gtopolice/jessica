@@ -1,5 +1,4 @@
-import { createPublicClient, http } from "viem";
-import { baseSepolia } from "viem/chains";
+import { getBaseSepoliaPublicClient } from "@/lib/ethereum/base-sepolia-public-client";
 
 const BUFFER_PCT = 30n;
 const BUFFER_BASE = 100n;
@@ -18,15 +17,7 @@ export async function estimateSuperfluidTxGas(params: {
   to: `0x${string}`;
   data: `0x${string}`;
 }): Promise<bigint> {
-  const url =
-    typeof process !== "undefined" && process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL
-      ? process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL
-      : undefined;
-
-  const client = createPublicClient({
-    chain: baseSepolia,
-    transport: http(url),
-  });
+  const client = getBaseSepoliaPublicClient();
 
   try {
     const gas = await client.estimateGas({

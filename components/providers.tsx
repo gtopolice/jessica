@@ -1,7 +1,7 @@
 "use client";
 
 import { PrivyProvider } from "@privy-io/react-auth";
-import { base, baseSepolia } from "viem/chains";
+import { baseSepolia } from "viem/chains";
 import type { ReactNode } from "react";
 
 export function Providers({ children }: { children: ReactNode }) {
@@ -15,7 +15,8 @@ export function Providers({ children }: { children: ReactNode }) {
       appId={appId}
       config={{
         defaultChain: baseSepolia,
-        supportedChains: [baseSepolia, base],
+        /** Sprint 2 token + Superfluid addresses are Base Sepolia–only for now. */
+        supportedChains: [baseSepolia],
         embeddedWallets: {
           ethereum: { createOnLogin: "users-without-wallets" },
         },

@@ -7,6 +7,8 @@ import {
   estimateSuperfluidTxGas,
   SUPERFLUID_FORWARDER_TX_GAS_FALLBACK,
 } from "@/lib/ethereum/estimate-superfluid-tx-gas";
+import { IconCopyButton } from "@/components/icon-copy-button";
+import { shortenUuid } from "@/lib/format/shorten";
 
 type ApiErr = { error?: string };
 
@@ -149,10 +151,13 @@ export function Sprint2Demo() {
         headers,
       });
       const body = (await res.json()) as ApiErr & {
+        ok?: boolean;
         deleteFlowTransaction?: { to: `0x${string}`; data: `0x${string}` } | null;
       };
       if (!res.ok) throw new Error(body.error ?? res.statusText);
-      if (body.deleteFlowTransaction) {
+      if (body.ok === true) {
+        appendLog("Session was already ended (nothing to do on-chain).");
+      } else if (body.deleteFlowTransaction) {
         const gasLimit = await gasLimitForSuperfluidTx(body.deleteFlowTransaction);
         const { hash } = await sendTransaction({
           to: body.deleteFlowTransaction.to,
@@ -163,7 +168,9 @@ export function Sprint2Demo() {
         });
         appendLog(`deleteFlow tx: ${hash}`);
       } else {
-        appendLog("Session ended (no deleteFlow tx — was still pending_payment or not requester).");
+        appendLog(
+          "Session marked ended (no deleteFlow tx — e.g. still pending_payment, or fulfiller ended first).",
+        );
       }
       setEmbedUrl(null);
     } catch (e) {
@@ -224,17 +231,34 @@ export function Sprint2Demo() {
 
       <label className="mt-4 block text-xs font-medium uppercase tracking-wide text-zinc-500">
         Stream id (requester pastes from fulfiller)
-        <input
-          value={streamId}
-          onChange={(e) => setStreamId(e.target.value)}
-          placeholder="uuid"
-          className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 font-mono text-sm dark:border-zinc-600 dark:bg-zinc-900"
-        />
+        <div className="mt-1 flex gap-1.5">
+          <input
+            value={streamId}
+            onChange={(e) => setStreamId(e.target.value)}
+            placeholder="uuid"
+            title={streamId || undefined}
+            className="min-w-0 flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 font-mono text-sm dark:border-zinc-600 dark:bg-zinc-900"
+          />
+          <IconCopyButton
+            textToCopy={streamId.trim()}
+            label="Copy stream id"
+            disabled={!streamId.trim()}
+          />
+        </div>
       </label>
 
-      <p className="mt-2 font-mono text-xs text-zinc-500">
-        session: {sessionId || "—"}
-      </p>
+      <div className="mt-2 flex min-w-0 items-center gap-2 text-xs text-zinc-500">
+        <span className="shrink-0 font-medium uppercase tracking-wide">session</span>
+        <span
+          className="min-w-0 flex-1 truncate font-mono text-zinc-600 dark:text-zinc-400"
+          title={sessionId || undefined}
+        >
+          {sessionId ? shortenUuid(sessionId) : "—"}
+        </span>
+        {sessionId.trim() ? (
+          <IconCopyButton textToCopy={sessionId.trim()} label="Copy session id" />
+        ) : null}
+      </div>
 
       {embedUrl ? (
         <div className="mt-4">
