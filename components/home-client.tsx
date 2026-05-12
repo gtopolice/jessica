@@ -3,6 +3,7 @@
 import { usePrivy } from "@privy-io/react-auth";
 import { useCallback, useEffect, useState } from "react";
 import { RealtimeConnectionLabel } from "@/components/realtime-connection-label";
+import { Sprint2Demo } from "@/components/sprint2-demo";
 
 type SyncState = "idle" | "syncing" | "ok" | "error";
 
@@ -96,13 +97,13 @@ function HomeWithPrivy() {
     <div className="mx-auto flex min-h-full w-full max-w-lg flex-col gap-8 px-6 py-16">
       <header className="space-y-2">
         <p className="text-sm font-medium uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-          Sprint 1
+          Sprint 1–2
         </p>
         <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
           J.E.S.S.I.C.A.
         </h1>
         <p className="text-zinc-600 dark:text-zinc-400">
-          Privy login, profile row in Supabase, and a live Realtime websocket check (broadcast channel).
+          Privy login, Supabase profile, Realtime check, Daily rooms, and Superfluid-gated sessions.
         </p>
       </header>
 
@@ -154,6 +155,8 @@ function HomeWithPrivy() {
           </div>
         )}
       </section>
+
+      {authenticated && syncState === "ok" ? <Sprint2Demo /> : null}
 
       <RealtimeConnectionLabel />
 
