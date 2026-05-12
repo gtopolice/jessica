@@ -1,8 +1,19 @@
+import { getAddress } from "viem";
 import { baseSepolia } from "viem/chains";
 
 /** Chain used for Sprint 2 demo (Privy config already includes Base Sepolia). */
 export const DEMO_CHAIN = baseSepolia;
 export const DEMO_CHAIN_ID = baseSepolia.id;
+
+/**
+ * Base Sepolia test tokens (see [fUSDC](https://sepolia.basescan.org/address/0x6b0dacea6a72e759243c99eaed840dee9564c194),
+ * [fUSDCx](https://sepolia.basescan.org/address/0x1650581f573ead727b92073b5ef8b4f5b94d1648)).
+ * Streams use **fUSDCx** only; mint **fUSDC** then upgrade/wrap to **fUSDCx** in the Superfluid UI.
+ */
+export const BASE_SEPOLIA_FUSDC = getAddress(
+  process.env.NEXT_PUBLIC_FUSDC_ADDRESS ??
+    "0x6b0dacea6a72e759243c99eaed840dee9564c194",
+);
 
 /**
  * Superfluid protocol on Base Sepolia (from @superfluid-finance/sdk-core metadata / explorer).
@@ -14,12 +25,14 @@ export const SUPERFLUID_BASE_SEPOLIA = {
   cfaV1Forwarder: (process.env.NEXT_PUBLIC_SUPERFLUID_CFA_FORWARDER ??
     "0xcfA132E353cB4E398080B9700609bb008eceB125") as `0x${string}`,
   /**
-   * Superfluid **fUSDCx** on Base Sepolia — Super Token over faucet **fUSDC** (not mainnet USDCx).
-   * Default matches [Superfluid Base Sepolia explorer](https://explorer.superfluid.org/base-sepolia).
+   * Superfluid **fUSDCx** on Base Sepolia — Super Token over [fUSDC](https://sepolia.basescan.org/address/0x6b0dacea6a72e759243c99eaed840dee9564c194).
+   * Default matches [BaseScan](https://sepolia.basescan.org/address/0x1650581f573ead727b92073b5ef8b4f5b94d1648) / Superfluid explorer.
    */
-  fusdcx: (process.env.NEXT_PUBLIC_FUSDCX_ADDRESS ??
-    process.env.NEXT_PUBLIC_USDCX_ADDRESS ??
-    "0x1650581f573ead727b92073b5ef8b4f5b94d1648") as `0x${string}`,
+  fusdcx: getAddress(
+    process.env.NEXT_PUBLIC_FUSDCX_ADDRESS ??
+      process.env.NEXT_PUBLIC_USDCX_ADDRESS ??
+      "0x1650581f573ead727b92073b5ef8b4f5b94d1648",
+  ),
 } as const;
 
 /** Tiny positive flow rate (wei/sec style magnitude for int96) — cheap for demos. */

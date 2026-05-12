@@ -17,7 +17,7 @@ Next.js app for **J.E.S.S.I.C.A.** (Joint Eyesight Sharing System for Instant Ca
 
 ### On-chain testnet assets
 
-- Requester needs a **small fUSDCx balance** on Base Sepolia to open a stream (mint **fUSDC** from the testnet faucet, then wrap to **fUSDCx** via the [Superfluid Base Sepolia explorer](https://explorer.superfluid.org/base-sepolia)). If `createFlow` reverts, check balance and minimum flow rules.
+- Requester needs **fUSDCx** on Base Sepolia: mint **[fUSDC](https://sepolia.basescan.org/address/0x6b0dacea6a72e759243c99eaed840dee9564c194)** from the contract (if exposed), then wrap/upgrade to **[fUSDCx](https://sepolia.basescan.org/address/0x1650581f573ead727b92073b5ef8b4f5b94d1648)** via the [Superfluid Base Sepolia dashboard](https://explorer.superfluid.org/base-sepolia). If `createFlow` reverts, check fUSDCx balance and flow rules.
 - Default **fUSDCx** address is in [lib/superfluid/base-sepolia.ts](lib/superfluid/base-sepolia.ts); override with `NEXT_PUBLIC_FUSDCX_ADDRESS` (or legacy `NEXT_PUBLIC_USDCX_ADDRESS`) if the explorer lists a newer token.
 
 ### Local setup
