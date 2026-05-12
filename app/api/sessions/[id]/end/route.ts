@@ -64,7 +64,7 @@ export async function POST(request: Request, context: RouteContext) {
 
   const receiver = fulfiller.wallet_address.toLowerCase() as `0x${string}`;
   const deleteTx = encodeCfaDeleteFlow({
-    superToken: SUPERFLUID_BASE_SEPOLIA.usdcx,
+    superToken: SUPERFLUID_BASE_SEPOLIA.fusdcx,
     receiver,
   });
 

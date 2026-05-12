@@ -93,7 +93,7 @@ export async function POST(request: Request) {
   }
 
   const tx = encodeCfaCreateFlow({
-    superToken: SUPERFLUID_BASE_SEPOLIA.usdcx,
+    superToken: SUPERFLUID_BASE_SEPOLIA.fusdcx,
     receiver: fulfillerWallet,
     flowRatePerSecond: flowRate,
   });
@@ -101,7 +101,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     session,
     chainId: DEMO_CHAIN_ID,
-    superToken: SUPERFLUID_BASE_SEPOLIA.usdcx,
+    superToken: SUPERFLUID_BASE_SEPOLIA.fusdcx,
     fulfillerWallet,
     requesterWallet,
     flowRateWeiPerSecond: flowRate.toString(),

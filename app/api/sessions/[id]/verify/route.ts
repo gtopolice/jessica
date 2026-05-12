@@ -70,7 +70,7 @@ export async function POST(request: Request, context: RouteContext) {
   let onChainRate: bigint;
   try {
     onChainRate = await readCfaFlowRate({
-      superToken: SUPERFLUID_BASE_SEPOLIA.usdcx,
+      superToken: SUPERFLUID_BASE_SEPOLIA.fusdcx,
       sender,
       receiver,
     });

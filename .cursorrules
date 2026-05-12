@@ -11,7 +11,7 @@
 - **Auth / wallets:** Privy + viem (chains); Coinbase CDP for paymaster / AA as configured in dashboards (see `README.md`).
 - **Media / video:** Daily.co (human WebRTC); Livepeer ingress (ONVIF RTSP → WebRTC) per PRD.
 - **Storage:** Cloudflare R2 (S3-compatible) for Reels/teasers when implemented.
-- **Chain / payments:** Base (Sepolia / mainnet); Superfluid (USDCx); x402 on agent routes when implemented.
+- **Chain / payments:** Base (Sepolia / mainnet); Superfluid streams (testnet **fUSDCx** over **fUSDC**; production **USDCx** per PRD); x402 on agent routes when implemented.
 
 ## 3. Architecture
 - **Modularity:** Small, focused modules; one main responsibility per file.

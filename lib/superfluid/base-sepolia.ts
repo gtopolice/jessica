@@ -13,8 +13,12 @@ export const SUPERFLUID_BASE_SEPOLIA = {
     "0x6836F23d6171D74Ef62FcF776655aBcD2bcd62Ef") as `0x${string}`,
   cfaV1Forwarder: (process.env.NEXT_PUBLIC_SUPERFLUID_CFA_FORWARDER ??
     "0xcfA132E353cB4E398080B9700609bb008eceB125") as `0x${string}`,
-  /** Wrapped USDC Super Token on Base Sepolia (faucet / test USDCx). */
-  usdcx: (process.env.NEXT_PUBLIC_USDCX_ADDRESS ??
+  /**
+   * Superfluid **fUSDCx** on Base Sepolia — Super Token over faucet **fUSDC** (not mainnet USDCx).
+   * Default matches [Superfluid Base Sepolia explorer](https://explorer.superfluid.org/base-sepolia).
+   */
+  fusdcx: (process.env.NEXT_PUBLIC_FUSDCX_ADDRESS ??
+    process.env.NEXT_PUBLIC_USDCX_ADDRESS ??
     "0x1650581f573ead727b92073b5ef8b4f5b94d1648") as `0x${string}`,
 } as const;
 

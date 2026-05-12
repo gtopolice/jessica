@@ -12,13 +12,13 @@ Next.js app for **J.E.S.S.I.C.A.** (Joint Eyesight Sharing System for Instant Ca
 ## Sprint 2 — Daily + Superfluid
 
 - **Daily.co:** `POST /api/streams` creates a private Daily room (server uses `DAILY_API_KEY`) and stores `daily_room_url` on `streams`.
-- **Superfluid (Base Sepolia):** `POST /api/sessions` opens a `sessions` row and returns **CFAv1Forwarder** `createFlow` calldata for the **requester** to stream **USDCx** to the **fulfiller**. `POST /api/sessions/[id]/verify` reads the on-chain flow via the **CFA** contract; if the rate is sufficient it sets the session **active** and returns the Daily URL (HTTP **402** if no flow yet — same spirit as x402 gating).
+- **Superfluid (Base Sepolia):** `POST /api/sessions` opens a `sessions` row and returns **CFAv1Forwarder** `createFlow` calldata for the **requester** to stream **fUSDCx** (Superfluid Super Token over faucet **fUSDC**) to the **fulfiller**. `POST /api/sessions/[id]/verify` reads the on-chain flow via the **CFA** contract; if the rate is sufficient it sets the session **active** and returns the Daily URL (HTTP **402** if no flow yet — same spirit as x402 gating).
 - **UI:** After profile sync succeeds, the home page shows a **Sprint 2** panel: two-browser demo (fulfiller creates stream; requester pastes `stream id`, signs `createFlow`, verifies, iframe).
 
 ### On-chain testnet assets
 
-- Requester needs a **small USDCx balance** on Base Sepolia to open a stream (wrap / faucet per [Superfluid Base Sepolia](https://explorer.superfluid.org/base-sepolia)). If `createFlow` reverts, check balance and minimum flow rules.
-- Default **USDCx** address is in [lib/superfluid/base-sepolia.ts](lib/superfluid/base-sepolia.ts); override with `NEXT_PUBLIC_USDCX_ADDRESS` if the explorer lists a newer token.
+- Requester needs a **small fUSDCx balance** on Base Sepolia to open a stream (mint **fUSDC** from the testnet faucet, then wrap to **fUSDCx** via the [Superfluid Base Sepolia explorer](https://explorer.superfluid.org/base-sepolia)). If `createFlow` reverts, check balance and minimum flow rules.
+- Default **fUSDCx** address is in [lib/superfluid/base-sepolia.ts](lib/superfluid/base-sepolia.ts); override with `NEXT_PUBLIC_FUSDCX_ADDRESS` (or legacy `NEXT_PUBLIC_USDCX_ADDRESS`) if the explorer lists a newer token.
 
 ### Local setup
 
