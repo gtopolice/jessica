@@ -1,13 +1,18 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { usePrivy, useSendTransaction } from "@privy-io/react-auth";
+import { useActiveWallet, usePrivy, useSendTransaction } from "@privy-io/react-auth";
 import { baseSepolia } from "viem/chains";
+import {
+  estimateSuperfluidTxGas,
+  SUPERFLUID_FORWARDER_TX_GAS_FALLBACK,
+} from "@/lib/ethereum/estimate-superfluid-tx-gas";
 
 type ApiErr = { error?: string };
 
 export function Sprint2Demo() {
   const { authenticated, getAccessToken } = usePrivy();
+  const { wallet: activeWallet } = useActiveWallet();
   const { sendTransaction } = useSendTransaction();
   const [streamId, setStreamId] = useState("");
   const [sessionId, setSessionId] = useState("");
@@ -24,6 +29,18 @@ export function Sprint2Demo() {
   const appendLog = (line: string) => {
     setLog((prev) => `${prev}\n${line}`.trim());
   };
+
+  const gasLimitForSuperfluidTx = useCallback(
+    async (tx: { to: `0x${string}`; data: `0x${string}` }) => {
+      const from =
+        activeWallet?.type === "ethereum"
+          ? (activeWallet.address as `0x${string}`)
+          : undefined;
+      if (!from) return SUPERFLUID_FORWARDER_TX_GAS_FALLBACK;
+      return estimateSuperfluidTxGas({ from, to: tx.to, data: tx.data });
+    },
+    [activeWallet],
+  );
 
   const fetchMeetingEmbed = async (sid: string) => {
     const headers = await authHeaders();
@@ -76,11 +93,13 @@ export function Sprint2Demo() {
       setSessionId(body.session.id);
       appendLog(`Session ${body.session.id} — sign createFlow (${body.flowRateWeiPerSecond}/s min).`);
 
+      const gasLimit = await gasLimitForSuperfluidTx(body.transaction);
       const { hash } = await sendTransaction({
         to: body.transaction.to,
         data: body.transaction.data,
         chainId: baseSepolia.id,
         value: 0,
+        gasLimit,
       });
       appendLog(`createFlow tx: ${hash}`);
     } catch (e) {
@@ -134,11 +153,13 @@ export function Sprint2Demo() {
       };
       if (!res.ok) throw new Error(body.error ?? res.statusText);
       if (body.deleteFlowTransaction) {
+        const gasLimit = await gasLimitForSuperfluidTx(body.deleteFlowTransaction);
         const { hash } = await sendTransaction({
           to: body.deleteFlowTransaction.to,
           data: body.deleteFlowTransaction.data,
           chainId: baseSepolia.id,
           value: 0,
+          gasLimit,
         });
         appendLog(`deleteFlow tx: ${hash}`);
       } else {
