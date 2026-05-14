@@ -1,8 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useActiveWallet, usePrivy, useSendTransaction } from "@privy-io/react-auth";
-import { baseSepolia } from "viem/chains";
+import { useActiveWallet, usePrivy } from "@privy-io/react-auth";
 import {
   estimateSuperfluidTxGas,
   SUPERFLUID_FORWARDER_TX_GAS_FALLBACK,
@@ -10,13 +9,15 @@ import {
 import { IconCopyButton } from "@/components/icon-copy-button";
 import { shortenUuid } from "@/lib/format/shorten";
 import { postConfirmEnd } from "@/lib/api/sessions-client";
+import { useSessionHeartbeat } from "@/lib/hooks/use-session-heartbeat";
+import { useSuperfluidSend } from "@/lib/hooks/use-superfluid-send";
 
 type ApiErr = { error?: string };
 
 export function Sprint2Demo() {
   const { authenticated, getAccessToken } = usePrivy();
   const { wallet: activeWallet } = useActiveWallet();
-  const { sendTransaction } = useSendTransaction();
+  const send = useSuperfluidSend();
   const [streamId, setStreamId] = useState("");
   const [sessionId, setSessionId] = useState("");
   const [embedUrl, setEmbedUrl] = useState<string | null>(null);
@@ -97,14 +98,12 @@ export function Sprint2Demo() {
       appendLog(`Session ${body.session.id} — sign createFlow (${body.flowRateWeiPerSecond}/s min).`);
 
       const gasLimit = await gasLimitForSuperfluidTx(body.transaction);
-      const { hash } = await sendTransaction({
+      const { hash, via } = await send({
         to: body.transaction.to,
         data: body.transaction.data,
-        chainId: baseSepolia.id,
-        value: 0,
         gasLimit,
       });
-      appendLog(`createFlow tx: ${hash}`);
+      appendLog(`createFlow tx (${via}): ${hash}`);
     } catch (e) {
       appendLog(e instanceof Error ? e.message : String(e));
     } finally {
@@ -162,15 +161,13 @@ export function Sprint2Demo() {
       const role = body.role ?? "caller";
       if (body.deleteFlowTransaction) {
         const gasLimit = await gasLimitForSuperfluidTx(body.deleteFlowTransaction);
-        const { hash } = await sendTransaction({
+        const { hash, via } = await send({
           to: body.deleteFlowTransaction.to,
           data: body.deleteFlowTransaction.data,
-          chainId: baseSepolia.id,
-          value: 0,
           gasLimit,
         });
         const prefix = body.cleanupOnly ? "cleanup deleteFlow" : "deleteFlow";
-        appendLog(`${prefix} tx (${role}): ${hash}`);
+        appendLog(`${prefix} tx (${role} via ${via}): ${hash}`);
         appendLog(await postConfirmEnd({ sessionId: sessionId.trim(), txHash: hash, authHeaders }));
       } else if ((body.onChainFlowRate ?? "0") === "0") {
         appendLog(`Session ended (${role}). No on-chain flow was active.`);
@@ -186,6 +183,12 @@ export function Sprint2Demo() {
       setBusy(false);
     }
   };
+
+  useSessionHeartbeat({
+    sessionId: sessionId.trim() || null,
+    enabled: Boolean(embedUrl),
+    getAuthHeaders: authHeaders,
+  });
 
   if (!authenticated) return null;
 

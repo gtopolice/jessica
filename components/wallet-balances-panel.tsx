@@ -6,6 +6,7 @@ import { formatUnits, getAddress, parseAbi } from "viem";
 import { baseSepolia } from "viem/chains";
 import { BASE_SEPOLIA_FUSDC, SUPERFLUID_BASE_SEPOLIA } from "@/lib/superfluid/base-sepolia";
 import { getBaseSepoliaPublicClient } from "@/lib/ethereum/base-sepolia-public-client";
+import { WalletActionsWrap } from "@/components/wallet-actions-wrap";
 
 const erc20Abi = parseAbi([
   "function balanceOf(address account) view returns (uint256)",
@@ -183,6 +184,10 @@ export function WalletBalancesPanel({ addressFallback }: WalletBalancesPanelProp
         </ul>
         {error ? <p className="mt-2 text-xs text-red-600 dark:text-red-400">{error}</p> : null}
       </div>
+
+      {isCorrectChain && address ? (
+        <WalletActionsWrap owner={address} onUpdated={refresh} />
+      ) : null}
     </div>
   );
 }

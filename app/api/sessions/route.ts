@@ -7,6 +7,7 @@ import {
   SUPERFLUID_BASE_SEPOLIA,
 } from "@/lib/superfluid/base-sepolia";
 import { encodeCfaCreateFlow } from "@/lib/superfluid/cfa-forwarder";
+import { readCfaFlowRate } from "@/lib/superfluid/read-flow";
 
 export async function POST(request: Request) {
   const auth = await getAuthedProfile(request);
@@ -75,6 +76,30 @@ export async function POST(request: Request) {
 
   const fulfillerWallet = fulfiller.wallet_address.toLowerCase() as `0x${string}`;
   const requesterWallet = auth.data.wallet;
+
+  // Pre-flight: Superfluid CFA allows only ONE flow per (sender, receiver, token).
+  // If one is already live, signing `createFlow` would revert on-chain. Force the
+  // caller to end the prior session first.
+  let existingFlowRate = 0n;
+  try {
+    existingFlowRate = await readCfaFlowRate({
+      superToken: SUPERFLUID_BASE_SEPOLIA.fusdcx,
+      sender: requesterWallet,
+      receiver: fulfillerWallet,
+    });
+  } catch {
+    existingFlowRate = 0n;
+  }
+  if (existingFlowRate > 0n) {
+    return NextResponse.json(
+      {
+        error:
+          "A Superfluid flow already exists between these wallets. End the prior session first (deleteFlow).",
+        onChainFlowRate: existingFlowRate.toString(),
+      },
+      { status: 409 },
+    );
+  }
 
   const { data: session, error: sessionError } = await supabase
     .from("sessions")
