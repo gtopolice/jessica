@@ -2,9 +2,11 @@ import { createPublicClient, http } from "viem";
 import { baseSepolia } from "viem/chains";
 
 export function getBaseSepoliaRpcUrl(): string | undefined {
-  return typeof process !== "undefined"
-    ? process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL
-    : undefined;
+  if (typeof process === "undefined") return undefined;
+  return (
+    process.env.BASE_SEPOLIA_RPC_URL ??
+    process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL
+  );
 }
 
 export function getBaseSepoliaPublicClient() {

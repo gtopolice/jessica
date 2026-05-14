@@ -9,6 +9,7 @@ import {
 } from "@/lib/ethereum/estimate-superfluid-tx-gas";
 import { IconCopyButton } from "@/components/icon-copy-button";
 import { shortenUuid } from "@/lib/format/shorten";
+import { postConfirmEnd } from "@/lib/api/sessions-client";
 
 type ApiErr = { error?: string };
 
@@ -151,13 +152,15 @@ export function Sprint2Demo() {
         headers,
       });
       const body = (await res.json()) as ApiErr & {
-        ok?: boolean;
+        role?: "fulfiller" | "requester";
+        onChainFlowRate?: string;
+        cleanupOnly?: boolean;
         deleteFlowTransaction?: { to: `0x${string}`; data: `0x${string}` } | null;
       };
       if (!res.ok) throw new Error(body.error ?? res.statusText);
-      if (body.ok === true) {
-        appendLog("Session was already ended (nothing to do on-chain).");
-      } else if (body.deleteFlowTransaction) {
+
+      const role = body.role ?? "caller";
+      if (body.deleteFlowTransaction) {
         const gasLimit = await gasLimitForSuperfluidTx(body.deleteFlowTransaction);
         const { hash } = await sendTransaction({
           to: body.deleteFlowTransaction.to,
@@ -166,10 +169,14 @@ export function Sprint2Demo() {
           value: 0,
           gasLimit,
         });
-        appendLog(`deleteFlow tx: ${hash}`);
+        const prefix = body.cleanupOnly ? "cleanup deleteFlow" : "deleteFlow";
+        appendLog(`${prefix} tx (${role}): ${hash}`);
+        appendLog(await postConfirmEnd({ sessionId: sessionId.trim(), txHash: hash, authHeaders }));
+      } else if ((body.onChainFlowRate ?? "0") === "0") {
+        appendLog(`Session ended (${role}). No on-chain flow was active.`);
       } else {
         appendLog(
-          "Session marked ended (no deleteFlow tx — e.g. still pending_payment, or fulfiller ended first).",
+          `Session ended in DB (${role}). On-chain flow=${body.onChainFlowRate}; click End again to sign cleanup deleteFlow.`,
         );
       }
       setEmbedUrl(null);
@@ -226,7 +233,9 @@ export function Sprint2Demo() {
       </div>
 
       <p className="mt-2 text-xs text-zinc-500">
-        Ending as the <strong>requester</strong> after the session is <strong>active</strong> prompts a <code>deleteFlow</code> tx. If the fulfiller ends first, stop the stream from the requester wallet in a block explorer or run End again as the requester.
+        Either party can End: when a Superfluid stream is live, the API returns <code>deleteFlow</code> calldata
+        for whoever clicked (requester <em>or</em> fulfiller). The route is idempotent — clicking End again
+        signs cleanup if an on-chain flow is still detected.
       </p>
 
       <label className="mt-4 block text-xs font-medium uppercase tracking-wide text-zinc-500">

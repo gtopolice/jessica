@@ -3,9 +3,19 @@ import { getAuthedProfile } from "@/lib/auth/privy-profile";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { SUPERFLUID_BASE_SEPOLIA } from "@/lib/superfluid/base-sepolia";
 import { encodeCfaDeleteFlow } from "@/lib/superfluid/cfa-forwarder";
+import { readCfaFlowRate } from "@/lib/superfluid/read-flow";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
+/**
+ * End a session.
+ *
+ * Both the **fulfiller** (flow receiver) and **requester** (flow sender) can call this. The Superfluid
+ * [CFA](https://docs.superfluid.finance/docs/technical-reference/CFAv1Forwarder) accepts `deleteFlow`
+ * from either party, so we hand back `deleteFlow` calldata to whichever side clicked End — as long as
+ * the on-chain flow is still live. The route is idempotent: if a stream lingers after the DB session
+ * was marked `ended`, calling End again still returns the cleanup tx (`cleanupOnly: true`).
+ */
 export async function POST(request: Request, context: RouteContext) {
   const auth = await getAuthedProfile(request);
   if (!auth.ok) return auth.response;
@@ -25,12 +35,8 @@ export async function POST(request: Request, context: RouteContext) {
     .eq("id", sessionId)
     .maybeSingle();
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-  if (!session) {
-    return NextResponse.json({ error: "Session not found" }, { status: 404 });
-  }
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!session) return NextResponse.json({ error: "Session not found" }, { status: 404 });
 
   const { data: stream, error: streamError } = await supabase
     .from("streams")
@@ -48,58 +54,68 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  if (session.status === "ended") {
-    return NextResponse.json({ ok: true, session: { id: sessionId, status: "ended" } });
-  }
-
-  const { data: fulfiller } = await supabase
+  const { data: profiles, error: profilesError } = await supabase
     .from("profiles")
-    .select("wallet_address")
-    .eq("id", stream.creator_id)
-    .single();
+    .select("id, wallet_address")
+    .in("id", [stream.creator_id, session.requester_id]);
 
-  if (!fulfiller?.wallet_address) {
-    return NextResponse.json({ error: "Fulfiller wallet missing" }, { status: 500 });
+  if (profilesError || !profiles) {
+    return NextResponse.json({ error: "Could not load participants" }, { status: 500 });
   }
 
-  const receiver = fulfiller.wallet_address.toLowerCase() as `0x${string}`;
-
-  const now = new Date().toISOString();
-  const { data: updated, error: updateError } = await supabase
-    .from("sessions")
-    .update({ status: "ended", ended_at: now })
-    .eq("id", sessionId)
-    .in("status", ["pending_payment", "active"])
-    .select("id, status, ended_at")
-    .single();
-
-  if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 });
+  const fulfillerWallet = profiles.find((p) => p.id === stream.creator_id)?.wallet_address;
+  const requesterWallet = profiles.find((p) => p.id === session.requester_id)?.wallet_address;
+  if (!fulfillerWallet || !requesterWallet) {
+    return NextResponse.json({ error: "Missing wallet for session participants" }, { status: 500 });
   }
 
-  let deleteFlowTransaction: { to: `0x${string}`; data: `0x${string}` } | null = null;
-  if (isRequester && session.status === "active") {
-    const { data: requester, error: requesterError } = await supabase
-      .from("profiles")
-      .select("wallet_address")
-      .eq("id", session.requester_id)
-      .single();
+  const sender = requesterWallet.toLowerCase() as `0x${string}`;
+  const receiver = fulfillerWallet.toLowerCase() as `0x${string}`;
 
-    if (requesterError || !requester?.wallet_address) {
-      return NextResponse.json({ error: "Requester wallet missing" }, { status: 500 });
-    }
-
-    const sender = requester.wallet_address.toLowerCase() as `0x${string}`;
-    const deleteTx = encodeCfaDeleteFlow({
+  let onChainFlowRate = 0n;
+  try {
+    onChainFlowRate = await readCfaFlowRate({
       superToken: SUPERFLUID_BASE_SEPOLIA.fusdcx,
       sender,
       receiver,
     });
-    deleteFlowTransaction = { to: deleteTx.to, data: deleteTx.data };
+  } catch {
+    onChainFlowRate = 0n;
+  }
+
+  const deleteTx =
+    onChainFlowRate > 0n
+      ? encodeCfaDeleteFlow({
+          superToken: SUPERFLUID_BASE_SEPOLIA.fusdcx,
+          sender,
+          receiver,
+        })
+      : null;
+
+  const wasAlreadyEnded = session.status === "ended";
+  let endedAt: string | null = null;
+  let status: string = session.status;
+  if (!wasAlreadyEnded) {
+    const now = new Date().toISOString();
+    const { data: updated, error: updateError } = await supabase
+      .from("sessions")
+      .update({ status: "ended", ended_at: now })
+      .eq("id", sessionId)
+      .in("status", ["pending_payment", "active"])
+      .select("id, status, ended_at")
+      .single();
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
+    status = updated.status;
+    endedAt = updated.ended_at;
   }
 
   return NextResponse.json({
-    session: updated,
-    deleteFlowTransaction,
+    session: { id: sessionId, status, ended_at: endedAt },
+    role: isFulfiller ? "fulfiller" : "requester",
+    onChainFlowRate: onChainFlowRate.toString(),
+    cleanupOnly: wasAlreadyEnded && deleteTx !== null,
+    deleteFlowTransaction: deleteTx ? { to: deleteTx.to, data: deleteTx.data } : null,
   });
 }

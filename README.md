@@ -13,6 +13,8 @@ Next.js app for **J.E.S.S.I.C.A.** (Joint Eyesight Sharing System for Instant Ca
 
 - **Daily.co:** `POST /api/streams` creates a room (default **`privacy: private`**; optional `DAILY_ROOM_PRIVACY=public` for local tests without tokens). The app mints [meeting tokens](https://docs.daily.co/reference/rest-api/meeting-tokens/create-meeting-token) via **`POST /api/streams/[id]/meeting-token`**: the **fulfiller** (stream creator) and an **active** session **requester** get a short-lived `?t=` URL for the Prebuilt iframe — aligned with controlled access in [docs/PRD.md](docs/PRD.md).
 - **Superfluid (Base Sepolia):** `POST /api/sessions` opens a `sessions` row and returns **CFAv1Forwarder** `createFlow` calldata for the **requester** to stream **fUSDCx** (Superfluid Super Token over faucet **fUSDC**) to the **fulfiller**. `POST /api/sessions/[id]/verify` reads the on-chain flow via the **CFA** contract; if the rate is sufficient it sets the session **active** and returns the Daily URL (HTTP **402** if no flow yet — same spirit as x402 gating). The Sprint 2 UI passes an explicit **`gasLimit`** to Privy’s `sendTransaction` (with `eth_estimateGas` plus headroom, or a safe fallback) so embedded wallets do not sign with an empty limit (**“intrinsic gas too low”**).
+- **End session (either party):** `POST /api/sessions/[id]/end` is callable by the **fulfiller** or the **requester**. The route reads the on-chain `flowRate` and returns **`deleteFlow`** calldata for whoever clicked End when a stream is still live (Superfluid CFA accepts `deleteFlow` from sender **or** receiver). The route is **idempotent**: clicking End again returns the same cleanup tx (`cleanupOnly: true`) until `getFlow` reports `0`.
+- **On-chain confirmation:** after `deleteFlow` is signed, the client posts the tx hash to `POST /api/sessions/[id]/confirm-end`. The server waits for the receipt, verifies success + that the call targeted the CFAv1Forwarder, re-reads `getFlow` to confirm `flowRate == 0`, then stamps `sessions.ended_on_chain_at` and `sessions.ended_on_chain_tx_hash`. Run [supabase/migrations/20260514000000_sessions_end_on_chain.sql](supabase/migrations/20260514000000_sessions_end_on_chain.sql) once to add those columns.
 - **UI:** After profile sync succeeds, the home page shows a **Sprint 2** panel: two-browser demo (fulfiller creates stream; requester pastes `stream id`, signs `createFlow`, verifies, iframe).
 
 ### On-chain testnet assets
@@ -25,7 +27,8 @@ Next.js app for **J.E.S.S.I.C.A.** (Joint Eyesight Sharing System for Instant Ca
 1. Copy [`.env.example`](.env.example) to `.env.local` and fill in values from the [Privy](https://dashboard.privy.io/), [Supabase](https://supabase.com/dashboard), and [Daily](https://dashboard.daily.co/) dashboards.
 2. In Supabase → **SQL** → New query, run migrations **in order**:
    - [supabase/migrations/20260512000000_init_profiles.sql](supabase/migrations/20260512000000_init_profiles.sql)
-   - [supabase/migrations/20260512000001_sprint2_streams_sessions.sql](supabase/migrations/20260512000001_sprint2_streams_sessions.sql)  
+   - [supabase/migrations/20260512000001_sprint2_streams_sessions.sql](supabase/migrations/20260512000001_sprint2_streams_sessions.sql)
+   - [supabase/migrations/20260514000000_sessions_end_on_chain.sql](supabase/migrations/20260514000000_sessions_end_on_chain.sql)  
    If `alter publication … add table` errors because the table is already in the publication, skip that `DO` block line for that table.
 3. Install and run:
 
