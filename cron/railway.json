@@ -1,0 +1,12 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "Dockerfile"
+  },
+  "deploy": {
+    "startCommand": "curl -fsS --retry 2 --max-time 30 -X POST -H \"Authorization: Bearer $SCHEDULED_TASK_SECRET\" \"$APP_URL/api/sessions/reconcile\"",
+    "cronSchedule": "*/5 * * * *",
+    "restartPolicyType": "NEVER"
+  }
+}
